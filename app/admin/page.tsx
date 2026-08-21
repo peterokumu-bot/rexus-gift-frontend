@@ -3,8 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AdminNav } from '@/components/admin/AdminNav';
+import {
+  DollarSign,
+  ShoppingBag,
+  Users,
+  Package,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+} from 'lucide-react';
 import api from '@/lib/api';
+import { downloadAdminCsv } from '@/lib/export';
+import { toast } from 'sonner';
 import { formatKES } from '@/lib/utils';
 
 export default function AdminDashboardPage() {
@@ -41,89 +51,224 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="h-8 bg-gray-100 rounded w-48 animate-pulse mb-8" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
-          ))}
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-28 rounded-2xl bg-white/5 animate-pulse" />
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-20 text-center">
-        <p className="text-red-600">{error}</p>
-        <Link href="/" className="mt-4 inline-block text-jungle-600 hover:underline">Go home</Link>
+      <div className="text-center py-20">
+        <p className="text-red-400">{error}</p>
+        <Link href="/" className="mt-4 inline-block text-[#C4A227] hover:underline">
+          Go home
+        </Link>
       </div>
     );
   }
 
-  const cards = [
-    { label: "Today's sales", value: formatKES(data.todaySales || 0) },
-    { label: 'Total sales', value: formatKES(data.totalSales || 0) },
-    { label: 'Profit (paid)', value: formatKES(data.totalProfit || 0) },
-    { label: 'Orders', value: String(data.totalOrders || 0) },
-    { label: 'Pending', value: String(data.pendingOrders || 0) },
-    { label: 'Customers', value: String(data.totalCustomers || 0) },
-    { label: 'Products', value: String(data.totalProducts || 0) },
-    { label: 'Low stock', value: String(data.lowStock || 0) },
-    { label: 'Out of stock', value: String(data.outOfStock || 0) },
+  const stats = [
+    {
+      label: "Today's sales",
+      value: formatKES(data.todaySales || 0),
+      icon: TrendingUp,
+      accent: 'from-[#2F6B52]/30 to-[#2F6B52]/5',
+      iconBg: 'bg-[#2F6B52]/20 text-[#5aa882]',
+    },
+    {
+      label: 'Total sales',
+      value: formatKES(data.totalSales || 0),
+      icon: DollarSign,
+      accent: 'from-[#C4A227]/20 to-[#C4A227]/5',
+      iconBg: 'bg-[#C4A227]/20 text-[#C4A227]',
+    },
+    {
+      label: 'Orders',
+      value: String(data.totalOrders || 0),
+      sub: `${data.pendingOrders || 0} pending`,
+      icon: ShoppingBag,
+      accent: 'from-blue-500/20 to-blue-500/5',
+      iconBg: 'bg-blue-500/20 text-blue-400',
+    },
+    {
+      label: 'Customers',
+      value: String(data.totalCustomers || 0),
+      icon: Users,
+      accent: 'from-purple-500/20 to-purple-500/5',
+      iconBg: 'bg-purple-500/20 text-purple-400',
+    },
+    {
+      label: 'Products',
+      value: String(data.totalProducts || 0),
+      icon: Package,
+      accent: 'from-cyan-500/20 to-cyan-500/5',
+      iconBg: 'bg-cyan-500/20 text-cyan-400',
+    },
+    {
+      label: 'Profit (paid)',
+      value: formatKES(data.totalProfit || 0),
+      icon: DollarSign,
+      accent: 'from-[#2F6B52]/30 to-emerald-500/5',
+      iconBg: 'bg-emerald-500/20 text-emerald-400',
+    },
+    {
+      label: 'Low stock',
+      value: String(data.lowStock || 0),
+      icon: AlertTriangle,
+      accent: 'from-orange-500/20 to-orange-500/5',
+      iconBg: 'bg-orange-500/20 text-orange-400',
+    },
+    {
+      label: 'Out of stock',
+      value: String(data.outOfStock || 0),
+      icon: AlertTriangle,
+      accent: 'from-red-500/20 to-red-500/5',
+      iconBg: 'bg-red-500/20 text-red-400',
+    },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
-      <AdminNav />
-      <h1 className="text-2xl lg:text-3xl font-serif font-bold text-gray-900 mb-6">Dashboard</h1>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-semibold text-white tracking-tight">Dashboard</h2>
+      <div className="flex flex-wrap gap-2 mb-6">
+        <span className="text-xs text-gray-500 self-center mr-1">Export</span>
+        {(['orders','customers','products','finance','inventory'] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={async () => {
+              try {
+                await downloadAdminCsv(k);
+                toast.success(`${k} exported`);
+              } catch (e: any) {
+                toast.error(e.message || 'Export failed');
+              }
+            }}
+            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5 capitalize"
+          >
+            {k}
+          </button>
+        ))}
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
-        {cards.map((c) => (
-          <div key={c.label} className="bg-white border border-gray-100 rounded-2xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">{c.label}</p>
-            <p className="mt-2 text-xl font-bold text-gray-900">{c.value}</p>
+        <p className="text-sm text-gray-500 mt-1">Store overview · Rexus Gift</p>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className={`relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br ${s.accent} p-5`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{s.label}</p>
+                <p className="mt-2 text-2xl font-bold text-white tracking-tight">{s.value}</p>
+                {s.sub && <p className="mt-1 text-xs text-gray-500">{s.sub}</p>}
+              </div>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.iconBg}`}>
+                <s.icon size={20} />
+              </div>
+            </div>
           </div>
         ))}
       </div>
 
-      <h2 className="font-serif font-bold text-lg text-gray-900 mb-4">Recent orders</h2>
-      {!data.recentOrders?.length ? (
-        <p className="text-gray-500">No orders yet.</p>
-      ) : (
-        <div className="overflow-x-auto border border-gray-100 rounded-2xl">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Order</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Payment</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data.recentOrders.map((o: any) => (
-                <tr key={o.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-medium">
-                    <Link href={`/admin/orders/${o.id}`} className="text-jungle-600 hover:underline">
-                      {o.orderNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{o.guestName || '—'}</td>
-                  <td className="px-4 py-3 font-medium">{formatKES(o.total)}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 text-xs">{o.orderStatus}</span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{o.paymentStatus}</td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(o.createdAt).toLocaleDateString('en-KE')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Two column: recent orders + quick links */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 rounded-2xl border border-white/5 bg-[#161b22] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-gray-500" />
+              <h3 className="font-semibold text-white">Recent orders</h3>
+            </div>
+            <Link href="/admin/orders" className="text-xs text-[#C4A227] hover:underline">
+              View all
+            </Link>
+          </div>
+          {!data.recentOrders?.length ? (
+            <p className="p-8 text-center text-gray-500 text-sm">No orders yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 text-xs uppercase tracking-wide border-b border-white/5">
+                    <th className="px-5 py-3 font-medium">Order</th>
+                    <th className="px-5 py-3 font-medium">Customer</th>
+                    <th className="px-5 py-3 font-medium">Total</th>
+                    <th className="px-5 py-3 font-medium">Status</th>
+                    <th className="px-5 py-3 font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recentOrders.map((o: any) => (
+                    <tr key={o.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <td className="px-5 py-3.5">
+                        <Link href={`/admin/orders/${o.id}`} className="font-medium text-[#5aa882] hover:underline">
+                          {o.orderNumber}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-400">{o.guestName || '—'}</td>
+                      <td className="px-5 py-3.5 font-medium text-white">{formatKES(o.total)}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/5 text-gray-300">
+                          {o.orderStatus}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-500">
+                        {new Date(o.createdAt).toLocaleDateString('en-KE')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-white/5 bg-[#161b22] p-5">
+            <h3 className="font-semibold text-white mb-4">Quick actions</h3>
+            <div className="space-y-2">
+              {[
+                { href: '/admin/orders', label: 'Manage orders' },
+                { href: '/admin/products', label: 'View products' },
+                { href: '/admin/inventory', label: 'Adjust inventory' },
+                { href: '/admin/customers', label: 'Customers' },
+              ].map((a) => (
+                <Link
+                  key={a.href}
+                  href={a.href}
+                  className="block w-full text-left px-4 py-2.5 rounded-xl text-sm text-gray-300 bg-white/5 hover:bg-[#2F6B52]/30 hover:text-white transition"
+                >
+                  {a.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/5 bg-gradient-to-br from-[#2F6B52]/40 to-[#161b22] p-5">
+            <h3 className="font-semibold text-white">Stock alerts</h3>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {(data.lowStock || 0) + (data.outOfStock || 0)}
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              {data.lowStock || 0} low · {data.outOfStock || 0} out
+            </p>
+            <Link
+              href="/admin/inventory?filter=low"
+              className="mt-4 inline-block text-sm text-[#C4A227] hover:underline"
+            >
+              Review inventory →
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

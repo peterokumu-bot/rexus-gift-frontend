@@ -1,59 +1,97 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ProductCard } from '@/components/product/ProductCard';
 import api from '@/lib/api';
 
-export default function ShopPage() {
+function ShopContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+
+  const search = searchParams.get('search') || '';
+  const category = searchParams.get('category') || '';
+  const occasion = searchParams.get('occasion') || '';
+  const recipient = searchParams.get('recipient') || '';
+  const tag = searchParams.get('tag') || '';
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    searchParams.forEach((v, k) => params.set(k, v));
-    if (!params.has('limit')) params.set('limit', '20');
-
     setLoading(true);
+    const params = new URLSearchParams({ limit: '56' });
+    if (search) params.set('search', search);
+    if (category) params.set('category', category);
+    if (occasion) params.set('occasion', occasion);
+    if (recipient) params.set('recipient', recipient);
+    if (tag) params.set('tag', tag);
+
     api
-      .get(`/products?${params.toString()}`)
+      .get(`/products?${params}`)
       .then((res) => {
         setProducts(res.data.data || []);
-        setMeta(res.data.meta || { page: 1, limit: 20, total: 0 });
+        setTotal(res.data.meta?.total || res.data.data?.length || 0);
       })
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
-  }, [searchParams]);
+  }, [search, category, occasion, recipient, tag]);
+
+  const title =
+    search || category || occasion || recipient || tag
+      ? [
+          search && `"${search}"`,
+          category,
+          occasion,
+          recipient,
+          tag,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : 'All gifts';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-gray-900">Shop Gifts</h1>
-        <p className="mt-1 text-gray-500">
-          {loading ? 'Loading...' : `${meta.total} products`}
-        </p>
-      </div>
+    <div className="w-full min-h-[60vh] bg-gray-50">
+      <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
+        <div className="mb-5 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 capitalize">
+            {title}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {loading ? 'Loading…' : `${total} product${total === 1 ? '' : 's'}`}
+          </p>
+        </div>
 
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-[3/4] bg-gray-100 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      ) : products.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
-          <p className="text-lg">No products found</p>
-          <p className="text-sm mt-2">Try adjusting your filters or check back later.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2 sm:gap-3">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <div key={i} className="aspect-[3/4] rounded-lg bg-gray-200/80 animate-pulse" />
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            <p className="text-lg">No products found</p>
+            <p className="text-sm mt-1">Try another search or category</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2 sm:gap-3">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full py-20 text-center text-gray-400">Loading shop…</div>
+      }
+    >
+      <ShopContent />
+    </Suspense>
   );
 }

@@ -3,17 +3,17 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AdminNav } from '@/components/admin/AdminNav';
 import api from '@/lib/api';
-import { formatKES } from '@/lib/utils';
+import { downloadAdminCsv } from '@/lib/export';
 import { toast } from 'sonner';
+import { formatKES } from '@/lib/utils';
 
 const STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
 
 export default function AdminOrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
-  const [meta, setMeta] = useState({ page: 1, total: 0 });
+  const [meta, setMeta] = useState({ total: 0 });
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
@@ -27,7 +27,7 @@ export default function AdminOrdersPage() {
       .get(`/admin/orders?${params}`)
       .then((res) => {
         setOrders(res.data.data || []);
-        setMeta(res.data.meta || { page: 1, total: 0 });
+        setMeta(res.data.meta || { total: 0 });
       })
       .catch(() => toast.error('Failed to load orders'))
       .finally(() => setLoading(false));
@@ -45,97 +45,95 @@ export default function AdminOrdersPage() {
     try {
       await api.patch(`/admin/orders/${id}/status`, { status: newStatus });
       toast.success('Status updated');
-      load(meta.page);
+      load();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Update failed');
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <AdminNav />
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-serif font-bold text-gray-900">Orders</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-semibold text-white">Orders</h2>
+      <button type="button" onClick={async () => { try { await downloadAdminCsv('orders'); toast.success('Export downloaded'); } catch (e: any) { toast.error(e.message || 'Export failed'); } }} className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5">Export CSV</button></div>
+          <p className="text-sm text-gray-500">{meta.total} orders</p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="border border-gray-200 rounded-full px-3 py-2 text-sm"
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white"
           >
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s} className="bg-[#161b22]">{s}</option>
             ))}
           </select>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && load(1)}
-            placeholder="Search order #, name, phone..."
-            className="border border-gray-200 rounded-full px-4 py-2 text-sm w-48"
+            onKeyDown={(e) => e.key === 'Enter' && load()}
+            placeholder="Search order #, name..."
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-gray-500 w-48 focus:outline-none focus:ring-2 focus:ring-[#2F6B52]/50"
           />
-          <button onClick={() => load(1)} className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium">
+          <button onClick={() => load()} className="bg-[#2F6B52] hover:bg-[#275a45] text-white text-sm font-medium px-4 py-2 rounded-xl">
             Search
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}</div>
-      ) : orders.length === 0 ? (
-        <p className="text-gray-500 py-12 text-center">No orders found</p>
-      ) : (
-        <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+      <div className="rounded-2xl border border-white/5 bg-[#161b22] overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Loading...</div>
+        ) : orders.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">No orders found</div>
+        ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Order</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Payment</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+            <thead>
+              <tr className="text-left text-xs text-gray-500 uppercase tracking-wide border-b border-white/5">
+                <th className="px-5 py-3 font-medium">Order</th>
+                <th className="px-5 py-3 font-medium">Customer</th>
+                <th className="px-5 py-3 font-medium">Total</th>
+                <th className="px-5 py-3 font-medium">Status</th>
+                <th className="px-5 py-3 font-medium">Payment</th>
+                <th className="px-5 py-3 font-medium">Date</th>
+                <th className="px-5 py-3 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {orders.map((o) => (
-                <tr key={o.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-medium">
-                    <Link href={`/admin/orders/${o.id}`} className="text-jungle-600 hover:underline">
+                <tr key={o.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="px-5 py-3">
+                    <Link href={`/admin/orders/${o.id}`} className="font-medium text-[#5aa882] hover:underline">
                       {o.orderNumber}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{o.guestName || o.user?.firstName || '—'}</td>
-                  <td className="px-4 py-3 font-medium">{formatKES(o.total)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3 text-gray-400">{o.guestName || o.user?.firstName || '—'}</td>
+                  <td className="px-5 py-3 font-medium text-white">{formatKES(o.total)}</td>
+                  <td className="px-5 py-3">
                     <select
                       value={o.orderStatus}
                       onChange={(e) => updateStatus(o.id, e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1"
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200"
                     >
                       {STATUSES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                        <option key={s} value={s} className="bg-[#161b22]">{s}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{o.paymentStatus}</td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(o.createdAt).toLocaleDateString('en-KE')}</td>
-                  <td className="px-4 py-3">
-                    <Link href={`/admin/orders/${o.id}`} className="text-jungle-600 hover:underline text-xs font-medium mr-2">
-                      View
-                    </Link>
-                    <Link href={`/admin/invoices/${o.id}`} className="text-gold-600 hover:underline text-xs font-medium">
-                      Invoice
-                    </Link>
+                  <td className="px-5 py-3 text-gray-400">{o.paymentStatus}</td>
+                  <td className="px-5 py-3 text-gray-500">{new Date(o.createdAt).toLocaleDateString('en-KE')}</td>
+                  <td className="px-5 py-3 space-x-2">
+                    <Link href={`/admin/orders/${o.id}`} className="text-xs text-[#5aa882] hover:underline">View</Link>
+                    <Link href={`/admin/invoices/${o.id}`} className="text-xs text-[#C4A227] hover:underline">Invoice</Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-      <p className="mt-4 text-sm text-gray-500">{meta.total} orders</p>
+        )}
+      </div>
     </div>
   );
 }

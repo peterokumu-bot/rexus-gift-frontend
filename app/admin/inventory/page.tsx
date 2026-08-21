@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminNav } from '@/components/admin/AdminNav';
 import api from '@/lib/api';
-import { formatKES } from '@/lib/utils';
+import { downloadAdminCsv } from '@/lib/export';
 import { toast } from 'sonner';
+import { formatKES } from '@/lib/utils';
 
 export default function AdminInventoryPage() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function AdminInventoryPage() {
   const submitAdjust = async (productId: string) => {
     const quantity = parseInt(qty, 10);
     if (isNaN(quantity) || quantity === 0) {
-      toast.error('Enter a non-zero quantity (+ to add, - to remove)');
+      toast.error('Enter a non-zero quantity (+ to add, − to remove)');
       return;
     }
     try {
@@ -63,10 +63,13 @@ export default function AdminInventoryPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <AdminNav />
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-serif font-bold text-gray-900">Inventory</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-semibold text-white">Inventory</h2>
+      <button type="button" onClick={async () => { try { await downloadAdminCsv('inventory'); toast.success('Export downloaded'); } catch (e: any) { toast.error(e.message || 'Export failed'); } }} className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5">Export CSV</button></div>
+          <p className="text-sm text-gray-500">{meta.total} products</p>
+        </div>
         <div className="flex gap-2">
           {[
             { value: '', label: 'All' },
@@ -76,8 +79,10 @@ export default function AdminInventoryPage() {
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                filter === f.value ? 'bg-jungle-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+                filter === f.value
+                  ? 'bg-[#2F6B52] text-white'
+                  : 'bg-white/5 text-gray-400 hover:text-white'
               }`}
             >
               {f.label}
@@ -86,44 +91,44 @@ export default function AdminInventoryPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}</div>
-      ) : (
-        <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+      <div className="rounded-2xl border border-white/5 bg-[#161b22] overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Loading...</div>
+        ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Product</th>
-                <th className="px-4 py-3 font-medium">SKU</th>
-                <th className="px-4 py-3 font-medium">Stock</th>
-                <th className="px-4 py-3 font-medium">Alert at</th>
-                <th className="px-4 py-3 font-medium">Buy / Sell</th>
-                <th className="px-4 py-3 font-medium">Adjust</th>
+            <thead>
+              <tr className="text-left text-xs text-gray-500 uppercase tracking-wide border-b border-white/5">
+                <th className="px-5 py-3 font-medium">Product</th>
+                <th className="px-5 py-3 font-medium">SKU</th>
+                <th className="px-5 py-3 font-medium">Stock</th>
+                <th className="px-5 py-3 font-medium">Alert</th>
+                <th className="px-5 py-3 font-medium">Buy / Sell</th>
+                <th className="px-5 py-3 font-medium">Adjust</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {products.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
-                  <td className="px-4 py-3 text-gray-500">{p.sku}</td>
-                  <td className="px-4 py-3">
+                <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="px-5 py-3 font-medium text-white">{p.name}</td>
+                  <td className="px-5 py-3 text-gray-500">{p.sku}</td>
+                  <td className="px-5 py-3">
                     <span
                       className={
                         p.stock === 0
-                          ? 'text-red-600 font-bold'
+                          ? 'text-red-400 font-bold'
                           : p.stock <= (p.lowStockAlert || 5)
-                            ? 'text-orange-600 font-semibold'
-                            : 'font-medium'
+                            ? 'text-orange-400 font-semibold'
+                            : 'text-gray-300'
                       }
                     >
                       {p.stock}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{p.lowStockAlert}</td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className="px-5 py-3 text-gray-500">{p.lowStockAlert}</td>
+                  <td className="px-5 py-3 text-gray-400">
                     {formatKES(p.buyingPrice)} / {formatKES(p.sellingPrice)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3">
                     {adjusting === p.id ? (
                       <div className="flex flex-wrap items-center gap-2">
                         <input
@@ -131,18 +136,15 @@ export default function AdminInventoryPage() {
                           value={qty}
                           onChange={(e) => setQty(e.target.value)}
                           placeholder="+5 or -2"
-                          className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-sm"
+                          className="w-24 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white"
                         />
                         <input
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
                           placeholder="Reason"
-                          className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm"
+                          className="w-28 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white"
                         />
-                        <button
-                          onClick={() => submitAdjust(p.id)}
-                          className="bg-jungle-500 text-white text-xs font-medium px-3 py-1 rounded-lg"
-                        >
+                        <button onClick={() => submitAdjust(p.id)} className="bg-[#2F6B52] text-white text-xs font-medium px-3 py-1 rounded-lg">
                           Save
                         </button>
                         <button onClick={() => setAdjusting(null)} className="text-xs text-gray-500">
@@ -156,7 +158,7 @@ export default function AdminInventoryPage() {
                           setQty('');
                           setReason('');
                         }}
-                        className="text-xs font-medium text-jungle-600 hover:underline"
+                        className="text-xs font-medium text-[#5aa882] hover:underline"
                       >
                         Adjust stock
                       </button>
@@ -166,11 +168,9 @@ export default function AdminInventoryPage() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-      <p className="mt-4 text-sm text-gray-500">
-        {meta.total} products · Use positive numbers to add stock, negative to reduce
-      </p>
+        )}
+      </div>
+      <p className="text-xs text-gray-500">Use positive numbers to add stock, negative to reduce</p>
     </div>
   );
 }

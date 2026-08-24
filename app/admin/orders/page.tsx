@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { downloadAdminCsv } from '@/lib/export';
 import { toast } from 'sonner';
 import { formatKES } from '@/lib/utils';
 
@@ -55,8 +54,7 @@ export default function AdminOrdersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-semibold text-white">Orders</h2>
-      <button type="button" onClick={async () => { try { await downloadAdminCsv('orders'); toast.success('Export downloaded'); } catch (e: any) { toast.error(e.message || 'Export failed'); } }} className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5">Export CSV</button></div>
+          <h2 className="text-xl font-semibold text-white">Orders</h2>
           <p className="text-sm text-gray-500">{meta.total} orders</p>
         </div>
         <div className="flex flex-wrap gap-2">

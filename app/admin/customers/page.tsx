@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { downloadAdminCsv } from '@/lib/export';
 import { toast } from 'sonner';
 import { formatKES } from '@/lib/utils';
 
@@ -51,8 +50,7 @@ export default function AdminCustomersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-semibold text-white">Customers</h2>
-      <button type="button" onClick={async () => { try { await downloadAdminCsv('customers'); toast.success('Export downloaded'); } catch (e: any) { toast.error(e.message || 'Export failed'); } }} className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5">Export CSV</button></div>
+          <h2 className="text-xl font-semibold text-white">Customers</h2>
           <p className="text-sm text-gray-500">{meta.total} customers</p>
         </div>
         <div className="flex gap-2">
@@ -76,6 +74,7 @@ export default function AdminCustomersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-500 uppercase tracking-wide border-b border-white/5">
+                <th className="px-5 py-3 font-medium">ID</th>
                 <th className="px-5 py-3 font-medium">Customer</th>
                 <th className="px-5 py-3 font-medium">Phone</th>
                 <th className="px-5 py-3 font-medium">Orders</th>
@@ -87,6 +86,14 @@ export default function AdminCustomersPage() {
             <tbody>
               {customers.map((c) => (
                 <tr key={c.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="px-5 py-3">
+                    <Link
+                      href={`/admin/customers/${c.id}`}
+                      className="font-mono text-xs font-semibold text-[#C4A227] hover:underline"
+                    >
+                      {c.customerCode || '—'}
+                    </Link>
+                  </td>
                   <td className="px-5 py-3">
                     <Link href={`/admin/customers/${c.id}`} className="font-medium text-white hover:text-[#5aa882]">
                       {c.firstName} {c.lastName}

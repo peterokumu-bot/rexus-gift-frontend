@@ -92,11 +92,9 @@ export default function AdminCustomerDetailPage() {
           <h2 className="text-xl font-semibold text-white">
             {customer.firstName} {customer.lastName}
           </h2>
-          {customer.customerCode && (
-            <span className="text-xs font-mono px-2.5 py-1 rounded-md bg-white/5 text-gray-400">
-              {customer.customerCode}
-            </span>
-          )}
+          <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-[#1a2332] border border-white/10 text-[#C4A227]">
+            ID {customer.customerCode || '—'}
+          </span>
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${VIP_STYLES[vip] || VIP_STYLES.REGULAR}`}>
             {vip}
           </span>
@@ -131,6 +129,10 @@ export default function AdminCustomerDetailPage() {
         <div className="lg:col-span-1 rounded-2xl border border-white/5 bg-[#161b22] p-5 space-y-3">
           <h3 className="text-sm font-semibold text-white">Contact</h3>
           <dl className="text-sm space-y-2">
+            <div>
+              <dt className="text-gray-500 text-xs">Customer ID</dt>
+              <dd className="text-[#C4A227] font-mono font-semibold">{customer.customerCode || '—'}</dd>
+            </div>
             <div>
               <dt className="text-gray-500 text-xs">Email</dt>
               <dd className="text-gray-200 break-all">{customer.email}</dd>

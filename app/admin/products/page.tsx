@@ -8,7 +8,6 @@ import {
   Package, Banknote, Tags, Search, ImagePlus, Upload,
 } from 'lucide-react';
 import api from '@/lib/api';
-import { downloadAdminCsv } from '@/lib/export';
 import { toast } from 'sonner';
 import { formatKES } from '@/lib/utils';
 
@@ -26,6 +25,7 @@ type ProductForm = {
   lowStockAlert: string;
   status: string;
   featured: boolean;
+  isPersonalized: boolean;
   isActive: boolean;
   categoryIds: string[];
   seoTitle: string;
@@ -41,7 +41,7 @@ type ProductForm = {
 const emptyForm: ProductForm = {
   name: '', sku: '', vendorId: '', slug: '', description: '', shortDescription: '',
   sellingPrice: '', buyingPrice: '', compareAtPrice: '', stock: '0', lowStockAlert: '5',
-  status: 'ACTIVE', featured: false, isActive: true, categoryIds: [],
+  status: 'ACTIVE', featured: false, isPersonalized: false, isActive: true, categoryIds: [],
   seoTitle: '', seoDescription: '', seoKeywords: '',
   weight: '', dimensions: '', colors: [], sizes: [], imageUrls: [],
 };
@@ -109,6 +109,9 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [step, setStep] = useState(1);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatParent, setNewCatParent] = useState('');
+  const [addingCat, setAddingCat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -155,7 +158,7 @@ export default function AdminProductsPage() {
       sellingPrice: String(p.sellingPrice ?? ''), buyingPrice: String(p.buyingPrice ?? ''),
       compareAtPrice: p.compareAtPrice != null ? String(p.compareAtPrice) : '',
       stock: String(p.stock ?? 0), lowStockAlert: String(p.lowStockAlert ?? 5),
-      status: p.status || 'ACTIVE', featured: !!p.featured, isActive: p.isActive !== false,
+      status: p.status || 'ACTIVE', featured: !!p.featured, isPersonalized: !!p.isPersonalized, isActive: p.isActive !== false,
       categoryIds: p.categories?.map((c: any) => c.id) || [],
       seoTitle: p.seoTitle || '', seoDescription: p.seoDescription || '', seoKeywords: p.seoKeywords || '',
       weight: p.weight != null ? String(p.weight) : '',
@@ -180,6 +183,31 @@ export default function AdminProductsPage() {
       }
       return next;
     });
+  };
+
+  
+  const createCategoryInline = async () => {
+    if (!newCatName.trim()) {
+      toast.error('Category name required');
+      return;
+    }
+    setAddingCat(true);
+    try {
+      const res = await api.post('/categories', {
+        name: newCatName.trim(),
+        parentId: newCatParent || null,
+      });
+      const cat = res.data.data;
+      setCategories((prev: any[]) => [...prev, cat]);
+      setForm((f) => ({ ...f, categoryIds: [...f.categoryIds, cat.id] }));
+      setNewCatName('');
+      setNewCatParent('');
+      toast.success('Category added');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to add category');
+    } finally {
+      setAddingCat(false);
+    }
   };
 
   const toggleChip = (field: 'colors' | 'sizes', value: string) => {
@@ -300,6 +328,7 @@ export default function AdminProductsPage() {
       lowStockAlert: parseInt(form.lowStockAlert, 10) || 5,
       status: form.status,
       featured: form.featured,
+      isPersonalized: form.isPersonalized,
       isActive: form.isActive,
       categoryIds: form.categoryIds.length ? form.categoryIds : undefined,
       seoTitle: form.seoTitle || undefined,
@@ -342,8 +371,7 @@ export default function AdminProductsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-semibold text-white">Products</h2>
-      <button type="button" onClick={async () => { try { await downloadAdminCsv('products'); toast.success('Export downloaded'); } catch (e: any) { toast.error(e.message || 'Export failed'); } }} className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5">Export CSV</button></div>
+          <h2 className="text-xl font-semibold text-white">Products</h2>
           <p className="text-sm text-gray-500">{meta.total} products</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -628,6 +656,9 @@ export default function AdminProductsPage() {
                   <div className="flex flex-wrap gap-6 pt-2">
                     <label className="flex items-center gap-2.5 text-sm text-gray-300 cursor-pointer">
                       <input type="checkbox" name="featured" checked={form.featured} onChange={onChange} className="rounded border-white/20 size-4" /> Featured
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                        <input type="checkbox" name="isPersonalized" checked={form.isPersonalized} onChange={onChange} className="rounded border-white/20 size-4" /> Personalized message
                     </label>
                     <label className="flex items-center gap-2.5 text-sm text-gray-300 cursor-pointer">
                       <input type="checkbox" name="isActive" checked={form.isActive} onChange={onChange} className="rounded border-white/20 size-4" /> Visible in store

@@ -1,66 +1,85 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { formatKES } from '@/lib/utils';
+import { OrderTimeline } from '@/components/order/OrderTimeline';
 
-export default function OrderConfirmationPage() {
-  const params = useParams();
-  const id = params.id as string;
+export default function OrderTrackingPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [order, setOrder] = useState<any>(null);
-  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
     api
       .get(`/orders/${id}`)
       .then((res) => setOrder(res.data.data))
-      .catch(() => setError(true));
-  }, [id]);
+      .catch(() => setOrder(null))
+      .finally(() => setLoading(false));
+  }, [id, router]);
 
-  if (error) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <h1 className="text-xl font-bold">Order not found</h1>
-        <Link href="/shop" className="mt-4 inline-block text-jungle-600 hover:underline">Back to shop</Link>
-      </div>
-    );
+  if (loading) {
+    return <div className="max-w-2xl mx-auto px-4 py-16"><div className="h-48 bg-gray-100 rounded-2xl animate-pulse" /></div>;
   }
 
   if (!order) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-20">
-        <div className="h-40 bg-gray-100 rounded-2xl animate-pulse" />
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-gray-600">Order not found</p>
+        <Link href="/account/orders" className="text-[#2F6B52] hover:underline text-sm mt-4 inline-block">
+          My orders
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-16 text-center">
-      <CheckCircle size={56} className="mx-auto text-jungle-500 mb-4" />
-      <h1 className="text-2xl font-serif font-bold text-gray-900">Order placed!</h1>
-      <p className="mt-2 text-gray-600">
-        Order number: <strong>{order.orderNumber}</strong>
-      </p>
-      <p className="mt-1 text-jungle-600 font-semibold text-lg">
-        Total: {formatKES(Number(order.total))}
-      </p>
-      <p className="mt-4 text-sm text-gray-500">
-        Status: {order.orderStatus} · Payment: {order.paymentStatus}
-      </p>
-      <p className="mt-2 text-sm text-gray-500">
-        We’ll confirm payment and delivery details shortly. For M-Pesa, complete the STK prompt on your phone when prompted.
-      </p>
-      <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-        <Link href="/shop" className="bg-jungle-500 hover:bg-jungle-600 text-white font-semibold px-6 py-3 rounded-full transition">
-          Continue shopping
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      <div>
+        <Link href="/account/orders" className="text-sm text-[#2F6B52] hover:underline">
+          ← My orders
         </Link>
-        <Link href="/" className="border border-gray-200 hover:bg-gray-50 font-medium px-6 py-3 rounded-full transition">
-          Home
-        </Link>
+        <h1 className="mt-3 text-2xl font-bold text-gray-900">Track order</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          {order.orderNumber} · {formatKES(order.total)} · Payment: {order.paymentStatus}
+        </p>
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Delivery timeline</h2>
+        <OrderTimeline
+          currentStatus={order.orderStatus}
+          history={order.statusHistory || []}
+        />
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900 mb-3">Items</h2>
+        <ul className="divide-y divide-gray-50">
+          {(order.items || []).map((item: any) => (
+            <li key={item.id} className="py-3 flex justify-between gap-3 text-sm">
+              <div>
+                <p className="font-medium text-gray-900">{item.productName}</p>
+                <p className="text-xs text-gray-500">Qty {item.quantity}</p>
+                {item.personalizationMessage && (
+                  <p className="text-xs text-gray-500 mt-1 italic line-clamp-2">
+                    Message: {item.personalizationMessage}
+                  </p>
+                )}
+              </div>
+              <p className="font-medium text-[#2F6B52] shrink-0">{formatKES(item.totalPrice)}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { Heart, Minus, Plus, ShoppingBag, Truck, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { addToCart as addToCartApi } from '@/lib/cart';
+import { HandwrittenPreview } from '@/components/product/HandwrittenPreview';
 import { formatKES } from '@/lib/utils';
 
 function parseDims(dim?: string | null) {
@@ -42,6 +43,8 @@ export default function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [loveMessage, setLoveMessage] = useState('');
+  const [paperColor, setPaperColor] = useState<'yellow' | 'pink'>('yellow');
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -50,10 +53,21 @@ export default function ProductDetailPage() {
     api
       .get(`/products/${slug}`)
       .then((res) => {
-        setProduct(res.data.data);
+        const p = res.data.data;
+        setProduct(p);
         setSelectedImage(0);
-        setSelectedColor(null);
-        setSelectedSize(null);
+        const dims = (p.dimensions || '') as string;
+        const colors: string[] = [];
+        const sizes: string[] = [];
+        dims.split('|').map((x: string) => x.trim()).forEach((part: string) => {
+          if (part.toLowerCase().startsWith('colors:')) {
+            colors.push(...part.slice(7).split(',').map((c: string) => c.trim()).filter(Boolean));
+          } else if (part.toLowerCase().startsWith('sizes:')) {
+            sizes.push(...part.slice(6).split(',').map((c: string) => c.trim()).filter(Boolean));
+          }
+        });
+        setSelectedColor(colors[0] || null);
+        setSelectedSize(sizes[0] || null);
       })
       .catch(() => {
         toast.error('Product not found');
@@ -62,22 +76,55 @@ export default function ProductDetailPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  const isPersonalizedProduct = Boolean(
+    product?.isPersonalized ||
+      /personaliz/i.test(product?.name || '') ||
+      /personaliz/i.test(product?.slug || '') ||
+      /handwrit/i.test(product?.name || ''),
+  );
+
   const addToCart = async () => {
     if (!product) return;
+    if (parsed.colors.length > 0 && !selectedColor) {
+      toast.error('Please select a colour');
+      return;
+    }
+    if (parsed.sizes.length > 0 && !selectedSize) {
+      toast.error('Please select a size');
+      return;
+    }
+    if (isPersonalizedProduct) {
+      if (!loveMessage.trim()) {
+        toast.error('Please write your personalized message');
+        return;
+      }
+      if (loveMessage.trim().length > 1200) {
+        toast.error('Message is too long (max 1200 characters)');
+        return;
+      }
+    }
     setAdding(true);
     try {
-      await addToCartApi(product.id, quantity);
+      const msg = loveMessage.trim();
+      await addToCartApi(product.id, quantity, {
+        selectedColor,
+        selectedSize,
+        personalizationMessage: isPersonalizedProduct ? msg : undefined,
+        paperColor: isPersonalizedProduct ? paperColor : undefined,
+      });
       toast.success('Added to cart');
+      return true;
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to add to cart');
+      return false;
     } finally {
       setAdding(false);
     }
   };
 
   const buyNow = async () => {
-    await addToCart();
-    router.push('/cart');
+    const ok = await addToCart();
+    if (ok) router.push('/checkout');
   };
 
   if (loading) {
@@ -234,6 +281,60 @@ export default function ProductDetailPage() {
                       {s}
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+
+            {/* Personalized handwritten message */}
+            {isPersonalizedProduct && (
+              <div className="mt-6 space-y-4 border border-[#2F6B52]/20 rounded-2xl p-4 bg-[#2F6B52]/[0.03]">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Your handwritten message</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    We&apos;ll print this to look like real handwriting on coloured paper.
+                  </p>
+                </div>
+                <textarea
+                  value={loveMessage}
+                  onChange={(e) => setLoveMessage(e.target.value)}
+                  rows={5}
+                  maxLength={1200}
+                  placeholder={"Dear love,\n\nMy heart misses you...\n\nLove always,"}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2F6B52]/30"
+                />
+                <p className="text-[11px] text-gray-400 text-right">{loveMessage.length}/1200</p>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-800 mb-2">Paper colour</p>
+                  <div className="flex gap-3">
+                    {([
+                      { id: 'yellow' as const, label: 'Yellow notepad', swatch: '#fff9c4' },
+                      { id: 'pink' as const, label: 'Pink letter', swatch: '#fce4ec' },
+                    ]).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setPaperColor(opt.id)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition ${
+                          paperColor === opt.id
+                            ? 'border-[#2F6B52] bg-[#2F6B52]/10 text-[#2F6B52] font-medium'
+                            : 'border-gray-200 text-gray-600'
+                        }`}
+                      >
+                        <span
+                          className="w-5 h-5 rounded-full border border-black/10"
+                          style={{ background: opt.swatch }}
+                        />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Preview</p>
+                  <HandwrittenPreview message={loveMessage} paperColor={paperColor} />
                 </div>
               </div>
             )}

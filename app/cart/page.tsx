@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { notifyCartUpdated } from '@/components/layout/Header';
 import { formatKES } from '@/lib/utils';
 
 export default function CartPage() {
@@ -45,6 +46,7 @@ export default function CartPage() {
       const res = await api.delete(`/cart/items/${itemId}`);
       setCart(res.data.data);
       toast.success('Item removed');
+      notifyCartUpdated();
     } catch {
       toast.error('Could not remove item');
     } finally {
@@ -109,9 +111,22 @@ export default function CartPage() {
               </Link>
 
               <div className="flex-1 min-w-0">
-                <Link href={`/product/${item.product.slug}`} className="font-medium text-gray-900 hover:text-jungle-600 line-clamp-2">
-                  {item.product.name}
-                </Link>
+                <div>
+                  <Link href={`/product/${item.product.slug}`} className="font-medium text-gray-900 hover:text-jungle-600 line-clamp-2">
+                    {item.product.name}
+                  </Link>
+                  {(item.selectedColor || item.selectedSize) && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {[item.selectedColor, item.selectedSize].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                  {item.personalizationMessage && (
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-2 italic">
+                      Message ({item.paperColor || 'yellow'} paper): &ldquo;{item.personalizationMessage.slice(0, 80)}
+                      {item.personalizationMessage.length > 80 ? '…' : ''}&rdquo;
+                    </p>
+                  )}
+                </div>
                 <p className="mt-1 text-jungle-600 font-semibold">{formatKES(item.product.sellingPrice)}</p>
 
                 <div className="mt-3 flex items-center justify-between gap-4">

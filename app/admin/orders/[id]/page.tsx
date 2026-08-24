@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { formatKES } from '@/lib/utils';
+import { OrderTimeline } from '@/components/order/OrderTimeline';
 
 const ORDER_STATUSES = [
   'PENDING',
@@ -55,6 +56,36 @@ export default function AdminOrderDetailPage() {
     }
     load();
   }, [id, router]);
+
+  const downloadMessages = async () => {
+    try {
+      const res = await api.get(`/admin/orders/${id}/handwritten-messages`);
+      const data = res.data.data;
+      if (!data.messages?.length) {
+        toast.error('No personalized messages on this order');
+        return;
+      }
+      const w = window.open('', '_blank');
+      if (!w) return;
+      const papers = data.messages
+        .map(
+          (m: any) => `
+          <div style="page-break-after:always;padding:24px;font-family:Georgia,serif;background:${
+            m.paperColor === 'pink' ? '#fce4ec' : '#fff9c4'
+          };min-height:80vh;margin-bottom:16px;border:1px solid #ddd">
+            <p style="font-size:12px;color:#666">Order ${data.orderNumber} · ${data.customerName || ''} · ${m.productName}</p>
+            <div style="margin-top:24px;font-size:22px;line-height:1.6;white-space:pre-wrap;font-family:cursive,Georgia,serif;color:#1a237e">${(
+              m.message || ''
+            ).replace(/</g, '&lt;')}</div>
+          </div>`,
+        )
+        .join('');
+      w.document.write(`<html><head><title>Messages ${data.orderNumber}</title></head><body onload="window.print()">${papers}</body></html>`);
+      w.document.close();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Could not download messages');
+    }
+  };
 
   const updateStatus = async () => {
     setSaving(true);
@@ -137,10 +168,17 @@ export default function AdminOrderDetailPage() {
           </span>
           <Link
             href={`/admin/invoices/${order.id}`}
+            className="text-xs px-2.5 py-1 rounded-md bg-[#1e3a5f] text-white hover:bg-[#152a45]"
+          >
+            Download invoice
+          </Link>
+          <button
+            type="button"
+            onClick={downloadMessages}
             className="text-xs px-2.5 py-1 rounded-md bg-[#C4A227]/20 text-[#C4A227] hover:bg-[#C4A227]/30"
           >
-            Invoice
-          </Link>
+            Handwritten message PDF
+          </button>
         </div>
       </div>
 
@@ -343,6 +381,13 @@ export default function AdminOrderDetailPage() {
               </ul>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/5 bg-[#161b22] p-5">
+        <h3 className="text-sm font-semibold text-white mb-4">Tracking timeline</h3>
+        <div className="text-gray-200">
+          <OrderTimeline currentStatus={order.orderStatus} history={order.statusHistory || []} />
         </div>
       </div>
     </div>

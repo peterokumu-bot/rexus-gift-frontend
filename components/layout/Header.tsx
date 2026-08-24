@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Heart, ShoppingBag, User, Menu, X, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Menu, X, LogOut, ChevronDown, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 
@@ -38,14 +38,58 @@ function cartCountFromResponse(data: any): number {
 }
 
 export function Header() {
+  const [brand, setBrand] = useState<{
+    logo?: string;
+    storeName?: string;
+    tagline?: string;
+    titleColor?: string;
+    taglineColor?: string;
+    titleFont?: string;
+  }>({});
+
+  useEffect(() => {
+    const apply = (b: any) => {
+      if (!b || typeof b !== 'object') return;
+      setBrand(b);
+      if (b.titleColor) document.documentElement.style.setProperty('--brand-title', b.titleColor);
+      if (b.taglineColor) document.documentElement.style.setProperty('--brand-tagline', b.taglineColor);
+      if (b.titleFont) document.documentElement.style.setProperty('--brand-font', b.titleFont);
+    };
+    api
+      .get('/settings/public?keys=branding')
+      .then((res) => apply(res.data?.data?.branding))
+      .catch(() => {});
+    const onBrand = (e: any) => apply(e.detail);
+    window.addEventListener('rexus-branding', onBrand);
+    return () => window.removeEventListener('rexus-branding', onBrand);
+  }, []);
+
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [cartCount, setCartCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotif, setUnreadNotif] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+
+  const loadNotifications = () => {
+    if (!localStorage.getItem('accessToken')) {
+      setNotifications([]);
+      setUnreadNotif(0);
+      return;
+    }
+    api
+      .get('/notifications')
+      .then((res) => {
+        setNotifications(res.data?.data?.items || []);
+        setUnreadNotif(res.data?.data?.unread || 0);
+      })
+      .catch(() => {});
+  };
 
   const refreshCart = () => {
     api
@@ -61,6 +105,7 @@ export function Header() {
     }
 
     refreshCart();
+    loadNotifications();
 
     const stored = localStorage.getItem('user');
     if (stored) {
@@ -129,9 +174,37 @@ export function Header() {
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
-          <Link href="/" className="flex items-center gap-1 shrink-0">
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Rexus</span>
-            <span className="text-xl sm:text-2xl font-medium text-[#C4A227]">Gift</span>
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 min-w-0">
+            {brand.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brand.logo}
+                alt={brand.storeName || 'Rexus Gift'}
+                className="h-8 sm:h-9 w-auto object-contain max-w-[48px] sm:max-w-[56px] rounded"
+              />
+            ) : null}
+            <span className="flex flex-col min-w-0 leading-tight">
+              <span
+                className="text-lg sm:text-xl font-bold tracking-tight truncate"
+                style={{
+                  color: brand.titleColor || '#111827',
+                  fontFamily: brand.titleFont || 'inherit',
+                }}
+              >
+                {brand.storeName || 'Rexus Gift'}
+              </span>
+              {brand.tagline ? (
+                <span
+                  className="text-[10px] sm:text-xs truncate max-w-[160px]"
+                  style={{
+                    color: brand.taglineColor || '#C4A227',
+                    fontFamily: brand.titleFont || 'inherit',
+                  }}
+                >
+                  {brand.tagline}
+                </span>
+              ) : null}
+            </span>
           </Link>
 
           {/* Desktop search */}
@@ -166,7 +239,73 @@ export function Header() {
               <Heart size={20} />
             </Link>
 
-            <Link href="/cart" className="relative p-2 text-gray-700 hover:text-[#2F6B52]" aria-label="Cart">
+            
+            {user && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotifOpen((v) => !v);
+                    loadNotifications();
+                  }}
+                  className="relative p-2 text-gray-700 hover:text-[#2F6B52]"
+                  aria-label="Notifications"
+                >
+                  <Bell size={20} />
+                  {unreadNotif > 0 && (
+                    <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[#C4A227] text-[10px] font-bold text-[#1a3b2e] flex items-center justify-center">
+                      {unreadNotif > 9 ? '9+' : unreadNotif}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-auto rounded-xl border border-gray-200 bg-white shadow-xl z-50">
+                    <div className="px-3 py-2 flex justify-between items-center border-b">
+                      <p className="text-xs font-semibold text-gray-900">Notifications</p>
+                      {unreadNotif > 0 && (
+                        <button
+                          type="button"
+                          className="text-[10px] text-[#2F6B52]"
+                          onClick={() => {
+                            api.patch('/notifications/read-all').then(() => loadNotifications());
+                          }}
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-6 text-sm text-gray-500 text-center">No notifications yet</p>
+                    ) : (
+                      notifications.map((n: any) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => {
+                            api.patch(`/notifications/${n.id}/read`).finally(() => {
+                              loadNotifications();
+                              const oid = n.data?.orderId;
+                              if (oid) window.location.href = `/orders/${oid}`;
+                              setNotifOpen(false);
+                            });
+                          }}
+                          className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${
+                            n.isRead ? '' : 'bg-[#2F6B52]/5'
+                          }`}
+                        >
+                          <p className="text-sm font-medium text-gray-900">{n.subject}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            {new Date(n.createdAt).toLocaleString('en-KE')}
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+<Link href="/cart" className="relative p-2 text-gray-700 hover:text-[#2F6B52]" aria-label="Cart">
               <ShoppingBag size={20} />
               {cartCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[1.15rem] h-[1.15rem] px-1 flex items-center justify-center rounded-full bg-[#C4A227] text-[#1a3b2e] text-[10px] font-bold leading-none">

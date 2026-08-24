@@ -1,9 +1,16 @@
 import type { Metadata } from 'next';
+import { Caveat } from 'next/font/google';
 import './globals.css';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
 import { Toaster } from 'sonner';
 import { Providers } from './providers';
+import { SiteChrome } from '@/components/layout/SiteChrome';
+import { BrandingEffects } from '@/components/layout/BrandingEffects';
+
+const caveat = Caveat({
+  subsets: ['latin'],
+  variable: '--font-caveat',
+  weight: ['400', '500', '600', '700'],
+});
 
 export const metadata: Metadata = {
   title: {
@@ -22,12 +29,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={caveat.variable}>
       <body className="min-h-screen flex flex-col antialiased">
         <Providers>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <BrandingEffects />
+          <SiteChrome>{children}</SiteChrome>
           <Toaster position="top-right" richColors />
         </Providers>
       </body>

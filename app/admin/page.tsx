@@ -13,8 +13,6 @@ import {
   Clock,
 } from 'lucide-react';
 import api from '@/lib/api';
-import { downloadAdminCsv } from '@/lib/export';
-import { toast } from 'sonner';
 import { formatKES } from '@/lib/utils';
 
 export default function AdminDashboardPage() {
@@ -77,6 +75,7 @@ export default function AdminDashboardPage() {
       icon: TrendingUp,
       accent: 'from-[#2F6B52]/30 to-[#2F6B52]/5',
       iconBg: 'bg-[#2F6B52]/20 text-[#5aa882]',
+      href: '/admin/orders',
     },
     {
       label: 'Total sales',
@@ -84,6 +83,7 @@ export default function AdminDashboardPage() {
       icon: DollarSign,
       accent: 'from-[#C4A227]/20 to-[#C4A227]/5',
       iconBg: 'bg-[#C4A227]/20 text-[#C4A227]',
+      href: '/admin/orders',
     },
     {
       label: 'Orders',
@@ -92,6 +92,7 @@ export default function AdminDashboardPage() {
       icon: ShoppingBag,
       accent: 'from-blue-500/20 to-blue-500/5',
       iconBg: 'bg-blue-500/20 text-blue-400',
+      href: '/admin/orders',
     },
     {
       label: 'Customers',
@@ -99,6 +100,7 @@ export default function AdminDashboardPage() {
       icon: Users,
       accent: 'from-purple-500/20 to-purple-500/5',
       iconBg: 'bg-purple-500/20 text-purple-400',
+      href: '/admin/customers',
     },
     {
       label: 'Products',
@@ -106,6 +108,7 @@ export default function AdminDashboardPage() {
       icon: Package,
       accent: 'from-cyan-500/20 to-cyan-500/5',
       iconBg: 'bg-cyan-500/20 text-cyan-400',
+      href: '/admin/products',
     },
     {
       label: 'Profit (paid)',
@@ -113,6 +116,7 @@ export default function AdminDashboardPage() {
       icon: DollarSign,
       accent: 'from-[#2F6B52]/30 to-emerald-500/5',
       iconBg: 'bg-emerald-500/20 text-emerald-400',
+      href: '/admin/orders',
     },
     {
       label: 'Low stock',
@@ -120,6 +124,7 @@ export default function AdminDashboardPage() {
       icon: AlertTriangle,
       accent: 'from-orange-500/20 to-orange-500/5',
       iconBg: 'bg-orange-500/20 text-orange-400',
+      href: '/admin/inventory?filter=low',
     },
     {
       label: 'Out of stock',
@@ -127,6 +132,7 @@ export default function AdminDashboardPage() {
       icon: AlertTriangle,
       accent: 'from-red-500/20 to-red-500/5',
       iconBg: 'bg-red-500/20 text-red-400',
+      href: '/admin/inventory?filter=out',
     },
   ];
 
@@ -134,26 +140,6 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-white tracking-tight">Dashboard</h2>
-      <div className="flex flex-wrap gap-2 mb-6">
-        <span className="text-xs text-gray-500 self-center mr-1">Export</span>
-        {(['orders','customers','products','finance','inventory'] as const).map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={async () => {
-              try {
-                await downloadAdminCsv(k);
-                toast.success(`${k} exported`);
-              } catch (e: any) {
-                toast.error(e.message || 'Export failed');
-              }
-            }}
-            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5 capitalize"
-          >
-            {k}
-          </button>
-        ))}
-      </div>
 
         <p className="text-sm text-gray-500 mt-1">Store overview · Rexus Gift</p>
       </div>
@@ -161,9 +147,10 @@ export default function AdminDashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {stats.map((s) => (
-          <div
+          <Link
             key={s.label}
-            className={`relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br ${s.accent} p-5`}
+            href={s.href}
+            className={`relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br ${s.accent} p-5 transition hover:border-white/15 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/20 focus:outline-none focus:ring-2 focus:ring-[#2F6B52]/40`}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -175,7 +162,7 @@ export default function AdminDashboardPage() {
                 <s.icon size={20} />
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

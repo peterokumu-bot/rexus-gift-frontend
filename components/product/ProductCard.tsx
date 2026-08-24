@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatKES } from '@/lib/utils';
@@ -16,11 +17,19 @@ interface ProductCardProps {
     images?: { url: string; altText?: string }[];
     stock?: number;
     status?: string;
+    isPersonalized?: boolean;
   };
-  /** Show price under name */
   showPrice?: boolean;
-  /** Show quick add button on hover */
   showAddToCart?: boolean;
+}
+
+function needsPersonalization(product: ProductCardProps['product']) {
+  return Boolean(
+    product.isPersonalized ||
+      /personaliz/i.test(product.name || '') ||
+      /personaliz/i.test(product.slug || '') ||
+      /handwrit/i.test(product.name || ''),
+  );
 }
 
 export function ProductCard({
@@ -28,10 +37,12 @@ export function ProductCard({
   showPrice = true,
   showAddToCart = true,
 }: ProductCardProps) {
+  const router = useRouter();
   const image =
     product.images?.[0]?.url ||
     'https://placehold.co/400x400/2F6B52/FFFFFF?text=Rexus';
   const blurb = product.shortDescription?.trim();
+  const personalized = needsPersonalization(product);
   const canAdd =
     showAddToCart &&
     product.stock !== 0 &&
@@ -40,6 +51,12 @@ export function ProductCard({
   const onAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Personalized products need message + paper colour on the product page
+    if (personalized) {
+      toast.message('Choose paper & write your message');
+      router.push(`/product/${product.slug}`);
+      return;
+    }
     try {
       await addToCart(product.id, 1);
       toast.success('Added to cart');
@@ -66,7 +83,7 @@ export function ProductCard({
             type="button"
             onClick={onAdd}
             className="absolute bottom-2 right-2 p-2 rounded-full bg-white shadow-md text-[#2F6B52] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition hover:bg-[#2F6B52] hover:text-white"
-            aria-label="Add to cart"
+            aria-label={personalized ? 'Personalize' : 'Add to cart'}
           >
             <ShoppingBag size={16} />
           </button>
